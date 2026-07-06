@@ -2,7 +2,7 @@
 // 集中于此，便于 Hook / Daemon / CLI 三端一致。
 
 export const SERVICE_NAME = "shine-code-submit";
-export const SERVICE_VERSION = "0.1.3";
+export const SERVICE_VERSION = "0.1.4";
 
 export const HOST = "127.0.0.1"; // 仅本机，禁止 0.0.0.0
 export const PORT = 36666;
