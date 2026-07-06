@@ -6,7 +6,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.js", "SessionStart"]
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "SessionStart"]
           }
         ]
       }
@@ -17,7 +17,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.js", "UserPromptSubmit"]
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "UserPromptSubmit"]
           }
         ]
       }
@@ -28,7 +28,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.js", "PostToolUse"]
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "PostToolUse"]
           }
         ]
       }
@@ -39,7 +39,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.js", "Stop"]
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "Stop"]
           }
         ]
       }
@@ -50,7 +50,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.js", "SubagentStop"]
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "SubagentStop"]
           }
         ]
       }
@@ -61,7 +61,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.js", "PreCompact"]
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "PreCompact"]
           }
         ]
       }
@@ -72,7 +72,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.js", "SessionEnd"]
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "SessionEnd"]
           }
         ]
       }
