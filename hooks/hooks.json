@@ -5,8 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "SessionStart"]
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs\" SessionStart"
           }
         ]
       }
@@ -16,8 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "UserPromptSubmit"]
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs\" UserPromptSubmit"
           }
         ]
       }
@@ -27,8 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "PostToolUse"]
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs\" PostToolUse"
           }
         ]
       }
@@ -38,8 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "Stop"]
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs\" Stop"
           }
         ]
       }
@@ -49,8 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "SubagentStop"]
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs\" SubagentStop"
           }
         ]
       }
@@ -60,8 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "PreCompact"]
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs\" PreCompact"
           }
         ]
       }
@@ -71,8 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs", "SessionEnd"]
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/launcher.cjs\" SessionEnd"
           }
         ]
       }
