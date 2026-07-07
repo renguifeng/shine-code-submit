@@ -1,0 +1,167 @@
+#!/usr/bin/env node
+// install CLI 入口:install / uninstall / status。由 node 跑(编译成 dist/install.cjs)。
+// npx shine-code-submit install → 自动装 bun + 部署 plugin + 注册 + 启 daemon + 开 dashboard。
+import { existsSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { ensureBun } from "./bun";
+import { cacheDir, deployPlugin } from "./deploy";
+import { enablePlugin, registerMarketplace, registerPlugin, unregisterAll } from "./register";
+import { BASE_URL, PUBLIC_BASE_URL, SERVICE_VERSION } from "../shared/config";
+import { isOursAlive, openBrowser } from "../shared/daemonctl";
+import { ensureDirs } from "../shared/paths";
+import { readPidFile } from "../shared/pidfile";
+
+const [, , cmd] = process.argv;
+
+main().catch((err) => {
+  console.error(`[shine-code-submit] ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+});
+
+async function main(): Promise<void> {
+  switch (cmd) {
+    case undefined:
+    case "install":
+      await runInstall();
+      break;
+    case "uninstall":
+      await runUninstall();
+      break;
+    case "status":
+      await runStatus();
+      break;
+    case "--version":
+    case "-v":
+      console.log(SERVICE_VERSION);
+      break;
+    default:
+      printHelp();
+  }
+}
+
+async function runInstall(): Promise<void> {
+  console.log(`=== shine-code-submit installer v${SERVICE_VERSION} ===`);
+  const bunPath = await ensureBun();
+  const cachePath = deployPlugin(bunPath);
+  registerMarketplace(cachePath);
+  registerPlugin(cachePath);
+  enablePlugin(cachePath);
+  ensureDirs();
+  await startDaemonWithBun(bunPath, cachePath);
+  openDashboard();
+  console.log("");
+  console.log("✓ 安装完成。");
+  console.log("  · 重启 Claude Code 后,/plugin 列表会显示 shine-code-submit(已启用)。");
+  console.log("  · 开新会话即触发 SessionStart hook,事件出现在 dashboard。");
+}
+
+async function runUninstall(): Promise<void> {
+  console.log("=== shine-code-submit uninstaller ===");
+  await stopDaemon();
+  unregisterAll();
+  const target = cacheDir();
+  if (existsSync(target)) {
+    rmSync(target, { recursive: true, force: true });
+    console.log(`[shine-code-submit] 已删除 ${target}`);
+  }
+  console.log("✓ 已卸载。重启 Claude Code 后 /plugin 不再显示。");
+}
+
+async function runStatus(): Promise<void> {
+  const alive = await isOursAlive();
+  const pid = readPidFile();
+  if (alive && pid) {
+    console.log(`daemon: running  pid=${pid.pid}  ${PUBLIC_BASE_URL}`);
+  } else {
+    console.log("daemon: not running");
+  }
+}
+
+/** 用显式 bunPath 拉 daemon。不调 daemonctl.spawnDaemon——它用 process.execPath,install 场景是 node 会出错。 */
+async function startDaemonWithBun(bunPath: string, cachePath: string): Promise<void> {
+  if (await isOursAlive()) {
+    console.log("[shine-code-submit] daemon 已在运行,跳过启动");
+    return;
+  }
+  const daemonSrc = join(cachePath, "src", "daemon", "main.ts");
+  console.log("[shine-code-submit] 启动 daemon...");
+  try {
+    const child = spawn(bunPath, ["run", daemonSrc], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      cwd: cachePath,
+      shell: process.platform === "win32",
+    });
+    child.unref();
+  } catch (err) {
+    console.error(`[shine-code-submit] 启动 daemon 失败:${err instanceof Error ? err.message : err}`);
+    console.error("  plugin 已注册,Claude Code 重启后 hook 会自动拉起 daemon");
+    return;
+  }
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    await sleep(200);
+    if (await isOursAlive()) {
+      console.log("[shine-code-submit] daemon 已就绪");
+      return;
+    }
+  }
+  console.error(
+    "[shine-code-submit] daemon 启动超时(10s)。plugin 已注册,可稍后手动 `shine-code-submit start` 或重启 claude。",
+  );
+}
+
+async function stopDaemon(): Promise<void> {
+  const pid = readPidFile();
+  if (!pid) {
+    console.log("[shine-code-submit] daemon 未运行(无 pid 文件)");
+    return;
+  }
+  if (await isOursAlive()) {
+    try {
+      await fetch(`${BASE_URL}/api/shutdown`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${pid.token}` },
+      });
+    } catch {
+      /* ignore */
+    }
+    await sleep(1000);
+    if (await isOursAlive()) {
+      try {
+        process.kill(pid.pid);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  console.log("[shine-code-submit] daemon 已停止");
+}
+
+function openDashboard(): void {
+  const pid = readPidFile();
+  const url = pid ? `${PUBLIC_BASE_URL}/ui?t=${pid.token}` : `${PUBLIC_BASE_URL}/ui`;
+  console.log(`[shine-code-submit] Dashboard: ${url}`);
+  try {
+    openBrowser(url);
+  } catch {
+    /* 打开失败不阻塞 */
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function printHelp(): void {
+  console.log(`shine-code-submit <command>
+
+  install     安装插件(自动装 bun + 部署 + 注册 + 启 daemon + 开 dashboard)
+  uninstall   卸载(停 daemon + 反注册 + 删文件)
+  status      显示 daemon 状态
+
+通常通过 npx 跑:npx shine-code-submit install`);
+  process.exit(cmd ? 1 : 0);
+}
