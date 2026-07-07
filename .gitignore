@@ -2,6 +2,7 @@ node_modules/
 *.log
 *.old
 *.bun-build
+*.tgz
 /dist/
 /release-assets/
 /.gh-dl/
