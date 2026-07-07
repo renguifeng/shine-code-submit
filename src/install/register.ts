@@ -1,9 +1,8 @@
 // 注册 plugin 到三处 JSON:known_marketplaces + installed_plugins + settings.enabledPlugins。
 // 关键:directory marketplace 的 plugin 不会自动进 settings.enabledPlugins(bug #17832),
 // 必须 install 脚本显式写 settings.json,否则 plugin 文件在但 hook 不生效。
-import { join } from "node:path";
 import { readJsonDefault, writeJsonAtomicWithBackup } from "./json-safe";
-import { installedPluginsPath, knownMarketplacesPath, pluginsRoot, settingsPath } from "./paths";
+import { installedPluginsPath, knownMarketplacesPath, settingsPath } from "./paths";
 import { MARKETPLACE_NAME, PLUGIN_NAME } from "./deploy";
 import { SERVICE_VERSION } from "../shared/config";
 
@@ -13,11 +12,14 @@ function pluginKey(): string {
   return `${PLUGIN_NAME}@${MARKETPLACE_NAME}`;
 }
 
-/** 注册 marketplace(directory source,指向 cachePath/.claude-plugin)。幂等。 */
+/** 注册 marketplace(directory source)。幂等。
+ *  source.path 与 installLocation 都指 cachePath(marketplace 根,含 .claude-plugin/marketplace.json)。
+ *  不能指 .claude-plugin 子目录:Claude Code 按 installLocation/.claude-plugin/marketplace.json 读清单,
+ *  且 plugin source "./" 相对根解析。指 .claude-plugin 子目录会报 "Plugin X not found in marketplace Y"
+ *  (实测 Claude Code 2.1.123)。也不能用 ~/.claude/plugins/marketplaces/<name>——那目录我们没填,是空的。 */
 export function registerMarketplace(cachePath: string): void {
   const file = knownMarketplacesPath();
   const data = readJsonDefault<Record<string, any>>(file, {});
-  const marketplaceDir = join(cachePath, ".claude-plugin");
   const existing = data[MARKETPLACE_NAME];
   if (existing?.source && existing.source.source !== "directory") {
     console.log(
@@ -25,8 +27,8 @@ export function registerMarketplace(cachePath: string): void {
     );
   }
   data[MARKETPLACE_NAME] = {
-    source: { source: "directory", path: marketplaceDir },
-    installLocation: join(pluginsRoot(), "marketplaces", MARKETPLACE_NAME),
+    source: { source: "directory", path: cachePath },
+    installLocation: cachePath,
     lastUpdated: new Date().toISOString(),
     autoUpdate: false,
   };
@@ -70,7 +72,7 @@ export function enablePlugin(cachePath: string): void {
   if (!data.extraKnownMarketplaces) data.extraKnownMarketplaces = {};
   if (!data.extraKnownMarketplaces[MARKETPLACE_NAME]) {
     data.extraKnownMarketplaces[MARKETPLACE_NAME] = {
-      source: { source: "directory", path: join(cachePath, ".claude-plugin") },
+      source: { source: "directory", path: cachePath },
     };
   }
   writeJsonAtomicWithBackup(file, data);
