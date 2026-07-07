@@ -2,6 +2,16 @@
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 0.2.8 — 2026-07-07
+
+修源码模式（`/plugin install`）首次 SessionStart 不打印 Dashboard 链接、得重启一次才出的问题。
+
+### 修复
+- `HEALTH_POLL_TIMEOUT_MS` 5000 → 15000。源码模式首次 SessionStart 要冷启动 daemon（`bun run` 首次 transpile TS + 加载 react/sqlite）可能 >5s；`ensureDaemon` 等不到 ready → `readToken` 空 → hook 跳过链接打印。提到 15s 覆盖冷启动（warm 启动 `isOursAlive` 立即命中，不会真等满）。
+
+### 验证
+Kali：杀掉 daemon 冷启动，跑一次 SessionStart →（bun 缺失时）提示 + 安装进度 + ✅ + Dashboard 链接一次全出（7s），不用再重启。
+
 ## 0.2.7 — 2026-07-07
 
 源码模式自动装 Bun 的 UX 改进：装之前给醒目提示、安装过程逐行流式输出、装完给结果。
