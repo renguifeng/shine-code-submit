@@ -23,7 +23,7 @@
     "dashboard"
   ],
   "bin": {
-    "shine-code-submit": "./dist/install.cjs"
+    "shine-code-submit": "dist/install.cjs"
   },
   "files": [
     "dist/install.cjs",
