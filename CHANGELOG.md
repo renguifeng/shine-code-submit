@@ -2,6 +2,21 @@
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 0.2.6 — 2026-07-07
+
+源码模式（`/plugin install` 或 `/plugin marketplace add`）**自动安装 Bun**：以前没装 Bun 时 launcher 静默退出、daemon 不起；现在首次 SessionStart 检测不到 Bun 就自动装。
+
+### 新增
+- `bin/launcher.cjs` 源码模式下：`findBun()`（PATH + `~/.bun/bin`、`/usr/local/bin`、`/opt/homebrew/bin`）检测不到 Bun 时，`installBun()` 自动安装——`npm i -g bun`（走已配 registry/镜像）→ 失败回退官方脚本（Windows PowerShell / Unix curl）。装完再 `bun run src/hook/main.ts`。安装输出写 `bun-install.log` 不污染 hook stdout；退出码恒 0；SessionStart 打印一行进度。
+- `hooks.json` SessionStart 加 `timeout: 200`，给首次装 Bun 留足时间（其它 hook 不变）。
+
+### 验证
+Kali（Bun 已在）实测无回归：新 launcher 仍走 `bun run`、daemon 正常 `ingest http SessionStart`、未误触发安装（`bun-install.log` 不生成）。
+
+## 0.2.5 — 2026-07-07
+
+npm/plugin 元数据（repository / homepage / bugs）由 aliyun 改指 GitHub；`plugin.json` version 同步（原长期停在 0.1.13）。无代码逻辑变更。
+
 ## 0.2.4 — 2026-07-07
 
 首个 **npm 一键安装完全可用** 的版本。修掉 0.2.0–0.2.3 在安装链路上陆续暴露的 5 个 bug。
