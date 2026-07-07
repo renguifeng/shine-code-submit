@@ -6,7 +6,7 @@
 import { ensureDirs } from "../shared/paths";
 import { readToken } from "../shared/pidfile";
 import { writeSpoolFile } from "../shared/spool";
-import { BASE_URL, HOOK_POST_TIMEOUT_MS } from "../shared/config";
+import { BASE_URL, PUBLIC_BASE_URL, HOOK_POST_TIMEOUT_MS } from "../shared/config";
 import { ensureDaemon } from "../shared/daemonctl";
 import type { HookEvent, HookEventType } from "../shared/types";
 
@@ -46,6 +46,22 @@ async function main(): Promise<void> {
     await forward(event);
   } catch (err) {
     process.stderr.write(`[shine-code-submit-hook] forward failed: ${safeMsg(err)}\n`);
+  }
+
+  // 3. SessionStart（真·新开会话）时给用户打印 UI 入口：stdout 输出 JSON，
+  //    Claude Code 解析 systemMessage 字段直接显示给用户（裸 stdout 只注入
+  //    assistant 当 context，用户不可见）。仅 source=startup 打印，避免
+  //    resume/clear/compact 刷屏；daemon 未就绪读不到 token 则静默跳过。
+  if (event.type === "SessionStart") {
+    const source = (event.payload as Record<string, unknown> | null | undefined)?.source;
+    if (source === "startup") {
+      const token = readToken();
+      if (token) {
+        process.stdout.write(
+          JSON.stringify({ systemMessage: `Shine Dashboard: ${PUBLIC_BASE_URL}/ui?t=${token}` }),
+        );
+      }
+    }
   }
   process.exit(0);
 }

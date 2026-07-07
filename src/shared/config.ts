@@ -1,12 +1,14 @@
 // 全局常量：端口、超时、扫描间隔、服务标识。
 // 集中于此，便于 Hook / Daemon / CLI 三端一致。
+import pkg from "../../package.json";
 
 export const SERVICE_NAME = "shine-code-submit";
-export const SERVICE_VERSION = "0.1.4";
+export const SERVICE_VERSION = pkg.version; // 单一来源：package.json，避免三处手动同步漏改
 
 export const HOST = "127.0.0.1"; // 仅本机，禁止 0.0.0.0
 export const PORT = 36666;
-export const BASE_URL = `http://${HOST}:${PORT}`;
+export const BASE_URL = `http://${HOST}:${PORT}`; // daemon / 内部访问用 127.0.0.1
+export const PUBLIC_BASE_URL = `http://localhost:${PORT}`; // 给用户看的链接（localhost 友好，WSL2 转发可用）
 
 // Hook 热转发超时：localhost 上 500ms 足够；超时即放弃热路径，靠 spool 兜底。
 export const HOOK_POST_TIMEOUT_MS = 500;
