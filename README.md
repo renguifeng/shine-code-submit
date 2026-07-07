@@ -97,7 +97,26 @@ clone 后无二进制；首次 hook 事件时 `bin/launcher.js`（node）自动 
 
 ---
 
-装完**开新会话**即生效。查看页（可选）：`bun run src/cli/main.ts ui`。
+## 查看页（Dashboard）
+
+装完**开新会话**即生效。两种打开方式：
+
+- **自动**：每次真·新开会话（`source=startup`，非 `resume/clear/compact`），hook 会在会话顶部打印一行 Dashboard 链接（走 Claude Code 的 `systemMessage` 机制，直接显示给你；裸 stdout 只注入 assistant 当 context，用户不可见）。复制到浏览器即开。
+- **手动**：`bun run src/cli/main.ts ui` —— 打印带 token 的链接并尝试打开浏览器。
+
+> daemon 没起来也不报错：SessionStart hook 会先拉起 daemon 再读 token 打印；万一拉起失败则静默跳过（退出码恒 0，绝不阻断 Claude Code）。
+
+### 局域网访问（其他设备看 Dashboard）
+
+默认 daemon 只绑 `127.0.0.1`（`/api/health` 与 `/ui` 无鉴权，绑回环最安全）。需要手机/平板/局域网其他设备访问时：
+
+1. 改监听地址：`export SHINE_CODE_SUBMIT_HOST=0.0.0.0`（或指定网卡 IP），再 `cli restart`。
+2. 让端口对外可达：
+   - **裸机 / Windows 原生跑 daemon**：绑 `0.0.0.0` 即对局域网可见，防火墙放行 36666 入站即可。
+   - **WSL2**：daemon 在 NAT 后，还要 `networkingMode=mirrored`（`.wslconfig`，推荐）或 `netsh portproxy` 端口转发，局域网设备才摸得到。
+3. 局域网设备开 `http://<本机局域网IP>:36666/ui?t=<token>`（token 在 `daemon.pid` 里）。
+
+> ⚠️ 绑非回环后，`token`（UI 链接 `?t=` 里明文）成为数据接口唯一防线。仅可信网络下如此配，勿外泄带 token 的链接。
 
 ## 分发方案：三种取舍
 
@@ -165,6 +184,7 @@ scripts/         build.ts
 | `SHINE_CODE_SUBMIT_DAEMON_CMD` | 拉起 daemon 的完整命令（开发期，如 `bun run src/daemon/main.ts`） | 同目录 daemon 二进制 |
 | `SHINE_CODE_SUBMIT_DAEMON` | 仅 `bun run` 入口路径 | 无 |
 | `SHINE_CODE_SUBMIT_DEBUG` | 开启 daemon DEBUG 日志 | 无 |
+| `SHINE_CODE_SUBMIT_HOST` | daemon 监听地址。默认仅本机回环；设 `0.0.0.0`（或指定网卡 IP）可暴露给局域网（见上「局域网访问」） | `127.0.0.1` |
 
 ## 数据位置
 
@@ -187,6 +207,7 @@ db/events.sqlite  事件库（按 cwd 隔离，幂等去重）
 - **幂等**：`(sessionId, eventId)` 唯一约束 + `INSERT OR IGNORE`，热路径与回捞共享，允许重放。
 - **热路径优先**：直接 POST，连接失败才探测/拉起（健康路径单次往返）。
 - **认自己人**：`/api/health` 返回 `service` 字段，Hook 校验后才认端口归属。
-- **只绑 127.0.0.1 + token**：健康端点外都鉴权。
+- **默认只绑 127.0.0.1 + token**：健康端点外都鉴权；监听地址可由 `SHINE_CODE_SUBMIT_HOST` 覆盖为 `0.0.0.0` 暴露局域网（见「局域网访问」）。
+- **监听/连接地址分离**：daemon 监听用 `LISTEN_HOST`（env 可配），hook POST / cli / 探活 连接 daemon 固定走 `127.0.0.1` 回环（daemon 即使绑 0.0.0.0 也含回环），最快最稳。
 - **自启动 + 自愈**：任意事件故障路径都能拉起；重复实例启动时自检退出，crash 只删属于自己的 pid。
 - **跨平台分发（方案 A）**：plugin 的 hooks.json 静态、无平台变量，靠 `bin/launcher.js` 按 `process.platform/arch` 选 `bin/<plat>-<arch>/` 里的二进制；hook/cli/daemon 同目录，hook 用 `process.execPath` 定位 daemon，零额外配置、装即用。
