@@ -1,2 +1,12 @@
-# 发布二进制走 Git LFS（每个 Bun --compile 产物约 50–90MB；6 平台 × 3 入口 = 18 个）
-bin/** filter=lfs diff=lfs merge=lfs -text
+# 跨平台统一 LF：避免 Windows 的 CRLF 污染需在 Linux 运行的脚本
+# （launcher.cjs 的 shebang 带 \r 会导致执行异常）。
+* text=auto eol=lf
+
+# 方案 C（源码直跑，本仓库采用）：bin/ 只含 launcher.cjs（小文本文件），无平台二进制，
+# 因此不需要 Git LFS。launcher.cjs 必须是普通 git 文本文件——若被 LFS 纳管，
+# 他机 clone/install 只拿到 pointer 文本，node 执行报语法错误，hook 全部失败。
+#
+# 若切回方案 A（二进制 commit 进 bin/<plat>-<arch>/），取消下面注释让 LFS 纳管大对象：
+# bin/*/hook*   filter=lfs diff=lfs merge=lfs -text
+# bin/*/cli*    filter=lfs diff=lfs merge=lfs -text
+# bin/*/daemon* filter=lfs diff=lfs merge=lfs -text
