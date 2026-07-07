@@ -34,7 +34,7 @@ export function spawnDaemon(): void {
     if (cmd) {
       spawn(cmd, { detached: true, stdio: "ignore", windowsHide: true, shell: true }).unref();
     } else if (process.env.SHINE_CODE_SUBMIT_DAEMON) {
-      spawn("bun", ["run", process.env.SHINE_CODE_SUBMIT_DAEMON], {
+      spawn(process.execPath, ["run", process.env.SHINE_CODE_SUBMIT_DAEMON], {
         detached: true,
         stdio: "ignore",
         windowsHide: true,
@@ -46,7 +46,9 @@ export function spawnDaemon(): void {
       // 源码模式：bun run src/daemon/main.ts（本文件在 src/shared/，相对定位）
       const here = dirname(fileURLToPath(import.meta.url));
       const daemonSrc = join(here, "..", "daemon", "main.ts");
-      spawn("bun", ["run", daemonSrc], { detached: true, stdio: "ignore", windowsHide: true }).unref();
+      // 用 process.execPath（hook/cli 由 bun 跑时即 bun.exe 完整路径），不靠 PATH/PATHEXT 解析——
+      // Windows 上 bun 进程内 spawn("bun") 不查 PATHEXT 会 ENOENT（Linux 无此问题）
+      spawn(process.execPath, ["run", daemonSrc], { detached: true, stdio: "ignore", windowsHide: true }).unref();
     }
   } catch (err) {
     process.stderr.write(`[shine-code-submit] spawn daemon failed: ${safeMsg(err)}\n`);
