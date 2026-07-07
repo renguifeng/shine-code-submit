@@ -1,6 +1,6 @@
 // shine-code-submit CLI：status / start / stop / restart / ui。
 // 用户侧管理命令。token 从 pid 文件读取。
-import { BASE_URL, LOCAL_BASE_URL } from "../shared/config";
+import { BASE_URL, PUBLIC_BASE_URL } from "../shared/config";
 import { readPidFile, removePidFile } from "../shared/pidfile";
 import { ensureDaemon, isOursAlive, openBrowser, spawnDaemon } from "../shared/daemonctl";
 
@@ -99,7 +99,7 @@ async function cmdUi(): Promise<void> {
     console.error("daemon: failed to start");
     process.exit(1);
   }
-  const url = `${LOCAL_BASE_URL}/ui?t=${pid.token}`;
+  const url = `${PUBLIC_BASE_URL}/ui?t=${pid.token}`;
   console.log("opening:", url);
   openBrowser(url);
 }

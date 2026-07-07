@@ -16,7 +16,6 @@ export const LISTEN_HOST = process.env.SHINE_CODE_SUBMIT_HOST ?? "0.0.0.0";
 export const HOST = "127.0.0.1"; // hook/cli/daemonctl 连接 daemon 用，固定回环（daemon 即使绑 0.0.0.0 也含 127.0.0.1）
 export const PORT = 36666;
 export const BASE_URL = `http://${HOST}:${PORT}`; // 内部访问（hook POST、cli、探活）走 127.0.0.1
-export const LOCAL_BASE_URL = `http://localhost:${PORT}`; // 本机打开浏览器用（localhost；非 127.0.0.1——WSL 下 Windows 浏览器把 127.0.0.1 当 Windows 自身，而 localhost 才走 WSL2 转发）
 
 /**
  * 第一个非回环、非虚拟网卡的 IPv4（给用户展示真实局域网可访问的链接）。

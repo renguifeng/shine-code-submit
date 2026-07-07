@@ -6,7 +6,7 @@
 import { ensureDirs } from "../shared/paths";
 import { readToken } from "../shared/pidfile";
 import { writeSpoolFile } from "../shared/spool";
-import { BASE_URL, PUBLIC_BASE_URL, LOCAL_BASE_URL, HOOK_POST_TIMEOUT_MS } from "../shared/config";
+import { BASE_URL, PUBLIC_BASE_URL, HOOK_POST_TIMEOUT_MS } from "../shared/config";
 import { ensureDaemon, openBrowser } from "../shared/daemonctl";
 import type { HookEvent, HookEventType } from "../shared/types";
 
@@ -57,11 +57,9 @@ async function main(): Promise<void> {
     if (source === "startup") {
       const token = readToken();
       if (token) {
-        // 打印的链接用网卡 IP（局域网通用）；本机打开浏览器用 localhost（WSL 下 Windows 浏览器靠 localhost 才走 WSL2 转发）
-        process.stdout.write(
-          JSON.stringify({ systemMessage: `Shine Dashboard: ${PUBLIC_BASE_URL}/ui?t=${token}` }),
-        );
-        openBrowser(`${LOCAL_BASE_URL}/ui?t=${token}`);
+        const url = `${PUBLIC_BASE_URL}/ui?t=${token}`; // 网卡 IP：显示与打开浏览器用同一地址，局域网通用
+        process.stdout.write(JSON.stringify({ systemMessage: `Shine Dashboard: ${url}` }));
+        openBrowser(url);
       }
     }
   }
