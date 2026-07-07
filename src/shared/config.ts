@@ -5,9 +5,16 @@ import pkg from "../../package.json";
 export const SERVICE_NAME = "shine-code-submit";
 export const SERVICE_VERSION = pkg.version; // 单一来源：package.json，避免三处手动同步漏改
 
-export const HOST = "127.0.0.1"; // 仅本机，禁止 0.0.0.0
+/**
+ * daemon 监听地址。默认仅本机回环（本服务的 /api/health 与 /ui 无鉴权，绑回环最安全）。
+ * 需要局域网/其他设备访问时，设环境变量 SHINE_CODE_SUBMIT_HOST=0.0.0.0（或指定网卡 IP）
+ * 再 restart daemon。绑非回环后 token 成为数据接口唯一防线，勿在不可信网络下使用。
+ */
+export const LISTEN_HOST = process.env.SHINE_CODE_SUBMIT_HOST ?? "127.0.0.1";
+
+export const HOST = "127.0.0.1"; // hook/cli/daemonctl 连接 daemon 用，固定回环（daemon 即使绑 0.0.0.0 也含 127.0.0.1）
 export const PORT = 36666;
-export const BASE_URL = `http://${HOST}:${PORT}`; // daemon / 内部访问用 127.0.0.1
+export const BASE_URL = `http://${HOST}:${PORT}`; // 内部访问（hook POST、cli、探活）走 127.0.0.1
 export const PUBLIC_BASE_URL = `http://localhost:${PORT}`; // 给用户看的链接（localhost 友好，WSL2 转发可用）
 
 // Hook 热转发超时：localhost 上 500ms 足够；超时即放弃热路径，靠 spool 兜底。

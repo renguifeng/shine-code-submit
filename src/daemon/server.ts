@@ -1,7 +1,7 @@
 // HTTP/WS 路由与鉴权。组装 Bun.serve。
 // 健康端点与静态页不鉴权；其余端点（事件接收、stats、events、sessions、ws、shutdown）需 token。
 import type { ServerWebSocket } from "bun";
-import { HOST, PORT, SERVICE_NAME, SERVICE_VERSION, LOG_TAIL_LINES, SESSION_TOKEN_ENRICH_LIMIT } from "../shared/config";
+import { LISTEN_HOST, PORT, SERVICE_NAME, SERVICE_VERSION, LOG_TAIL_LINES, SESSION_TOKEN_ENRICH_LIMIT } from "../shared/config";
 import type { HookEvent, HookEventType, PidFile } from "../shared/types";
 import { deriveStableEventId } from "../shared/id";
 import { checkToken } from "./auth";
@@ -38,7 +38,7 @@ export function startServer(deps: ServerDeps) {
     });
 
   return Bun.serve({
-    hostname: HOST,
+    hostname: LISTEN_HOST,
     port: PORT,
     async fetch(req, server) {
       const url = new URL(req.url);

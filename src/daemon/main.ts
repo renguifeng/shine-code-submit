@@ -1,7 +1,7 @@
 // Daemon 入口：组装 store/bus/stats/logger/spool/ws/server，写 pid 文件，启动并回捞一次。
 import { ensureDirs } from "../shared/paths";
 import { writePidFile, readPidFile, removePidFile } from "../shared/pidfile";
-import { SERVICE_NAME, SERVICE_VERSION, PORT, SPOOL_SCAN_INTERVAL_MS } from "../shared/config";
+import { SERVICE_NAME, SERVICE_VERSION, PORT, SPOOL_SCAN_INTERVAL_MS, LISTEN_HOST } from "../shared/config";
 import { isOursAlive } from "../shared/daemonctl";
 import { Store } from "./store";
 import { EventBus } from "./bus";
@@ -84,7 +84,7 @@ async function main(): Promise<void> {
   // 不一致（cli stop/restart/ui 据此取 token 会失效）。bind 成功才意味着本实例胜出。
   writePidFile(pid);
 
-  log.info(`${SERVICE_NAME} v${SERVICE_VERSION} listening http://127.0.0.1:${PORT} pid=${process.pid} token=${pid.token}`);
+  log.info(`${SERVICE_NAME} v${SERVICE_VERSION} listening http://${LISTEN_HOST}:${PORT} pid=${process.pid} token=${pid.token}`);
 }
 
 try {
