@@ -16,10 +16,10 @@ function ModuleRouter() {
       return <OverviewModule />;
     case "sessions":
       return <SessionsModule />;
-    case "events":
-      return <EventsModule />;
-    case "commits":
-      return <CommitsModule />;
+    // case "events":
+    //   return <EventsModule />;        // 暂时屏蔽
+    // case "commits":
+    //   return <CommitsModule />;       // 暂时屏蔽
     case "stats":
       return <StatsModule />;
     case "system":

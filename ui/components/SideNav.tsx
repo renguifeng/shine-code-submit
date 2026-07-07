@@ -6,8 +6,8 @@ import type { ModuleId } from "../types";
 const ITEMS: Array<{ id: ModuleId; label: string; icon: IconName }> = [
   { id: "overview", label: "概览", icon: "home" },
   { id: "sessions", label: "会话", icon: "sessions" },
-  { id: "events", label: "事件", icon: "activity" },
-  { id: "commits", label: "提交", icon: "git" },
+  // { id: "events", label: "事件", icon: "activity" },   // 暂时屏蔽，恢复取消注释即可
+  // { id: "commits", label: "提交", icon: "git" },        // 暂时屏蔽，恢复取消注释即可
   { id: "stats", label: "统计", icon: "chart" },
   { id: "system", label: "系统", icon: "server" },
 ];
