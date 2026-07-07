@@ -1,6 +1,6 @@
 {
   "name": "shine-code-submit",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": false,
   "type": "module",
   "description": "Claude Code Hook -> 本地常驻 Daemon 的状态/持久化底座",
@@ -8,11 +8,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "http://8.130.168.121:9001/AI/shine-code-submit.git"
+    "url": "https://github.com/renguifeng/shine-code-submit.git"
   },
-  "homepage": "http://8.130.168.121:9001/AI/shine-code-submit",
+  "homepage": "https://github.com/renguifeng/shine-code-submit",
   "bugs": {
-    "url": "http://8.130.168.121:9001/AI/shine-code-submit/issues"
+    "url": "https://github.com/renguifeng/shine-code-submit/issues"
   },
   "keywords": [
     "claude",

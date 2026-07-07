@@ -74,16 +74,16 @@ npx shine-code-submit install
 
 > 手动方式（源码直跑）需机器先装 [Bun](https://bun.sh) 1.3+（npx 安装器会自动装，手动才需自己装）：`npm install -g bun` 最省事；或官方脚本——Windows `powershell -c "irm bun.sh/install.ps1 | iex"`，macOS/Linux `curl -fsSL https://bun.sh/install | bash`。装完重开终端，`bun --version` 确认。
 
-**从 Gitea：**
+**从 GitHub：**
 
 ```
-/plugin marketplace add  http://8.130.168.121:9001/AI/shine-code-submit.git
+/plugin marketplace add  https://github.com/renguifeng/shine-code-submit.git
 /plugin install shine-code-submit@shine-code-submit
 ```
 
 clone 后无二进制；首次 hook 事件时 `bin/launcher.cjs`（node）自动 `bun run src/hook/main.ts`，daemon 同理 `bun run src/daemon/main.ts`。
 
-> ⚠️ Windows 系统代理会让 git 连不上 localhost。先 `setx NO_PROXY "localhost,127.0.0.1"` 并**重启 Claude Code**，再 `marketplace add`。
+> 需机器能访问 github.com（国内通常要走代理）；`marketplace add` 走 git，代理配好即可。
 
 **从本地目录：**
 
