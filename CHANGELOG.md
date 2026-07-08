@@ -2,6 +2,16 @@
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 0.2.10 — 2026-07-08
+
+暂时关闭「自动弹浏览器」——Dashboard 链接照常打印，用户自行点开。
+
+### 改动
+- 注释 `src/hook/main.ts` SessionStart 里的 `openBrowser`：新会话不再自动弹浏览器（链接仍作 `systemMessage` 打印）。
+- 注释 `src/install/main.ts` `openDashboard` 里的 `openBrowser`：安装完不再自动弹（Dashboard 链接仍打印）。
+- 保留 `src/cli/main.ts` `ui` 手动命令的 `openBrowser`（用户主动跑的）。
+- 想恢复：把那两处 `openBrowser(url)` 取消注释即可。
+
 ## 0.2.9 — 2026-07-08
 
 修方式二（`/plugin install`）装 Bun 时「进度」和「Dashboard 链接」都不显示的问题。

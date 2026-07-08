@@ -59,7 +59,7 @@ async function main(): Promise<void> {
       if (token) {
         const url = `${PUBLIC_BASE_URL}/ui?t=${token}`; // 网卡 IP：显示与打开浏览器用同一地址，局域网通用
         process.stdout.write(JSON.stringify({ systemMessage: `Shine Dashboard: ${url}` }));
-        openBrowser(url);
+        // openBrowser(url); // 自动弹浏览器暂时关闭——链接仍作 systemMessage 打印,用户可点开
       }
     }
   }

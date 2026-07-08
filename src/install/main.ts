@@ -144,11 +144,13 @@ function openDashboard(): void {
   const pid = readPidFile();
   const url = pid ? `${PUBLIC_BASE_URL}/ui?t=${pid.token}` : `${PUBLIC_BASE_URL}/ui`;
   console.log(`[shine-code-submit] Dashboard: ${url}`);
-  try {
-    openBrowser(url);
-  } catch {
-    /* 打开失败不阻塞 */
-  }
+  // 自动弹浏览器暂时关闭——Dashboard 链接仍打印在上一行,用户可自行点开。
+  // 想恢复:把下面 try/catch 取消注释(openBrowser(url))。
+  // try {
+  //   openBrowser(url);
+  // } catch {
+  //   /* 打开失败不阻塞 */
+  // }
 }
 
 function sleep(ms: number): Promise<void> {
