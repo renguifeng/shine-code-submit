@@ -45,7 +45,7 @@ export function ReportModule() {
       >
         {data ? (
           <>
-            <b>数据上报</b>
+            <b>报表</b>
             <span title="软件版本">v{data.version}</span>
             <span title="git 用户">👤 {data.gitUser ?? "—"}</span>
             <span>{data.totals.projects} 项目</span>
