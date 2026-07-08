@@ -2,6 +2,18 @@
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 1.0.2 — 2026-07-08
+
+token 显示修正 + 报表重构 + 默认上报配置。
+
+### 改动
+- **token 真实输入**：输入改用 `input + cacheCreation + cacheRead`（直接累加 Anthropic API 原始字段，不乘系数）；之前仅取未缓存 `input_tokens`，漏掉走缓存的输入（实测占输入侧 97%+）。
+- **fmtTokens 进位**：新增 B/T 级（两位小数），修复超 1e9 显示成 `1033M` 不进位。
+- **报表重构**：`/api/report` 移除提交汇总，改加 `gitRemote`（仓库地址）；新增 `POST /api/report/upload` 手动上报端点。
+- **会话/报表 token 三段式**：`输入 X · 输出 Y · 总数 Z`（带标签），导航只显总数。
+- **默认上报配置**：`settings.ts` 加 `DEFAULTS`，默认上报 `http://47.98.221.20:36667/api/report`，间隔 10 分钟；`readSettings` 返回 `{...DEFAULTS, ...已存}`。
+- **仓库新增 tokenserver**：报表接收服务（bun + sqlite + React），三级展示，可打包 Linux 二进制。独立部署，不入 npm 包。
+
 ## 1.0.1 — 2026-07-08
 
 版本号递增以通过 npm 发布（每次 publish 版本须高于已发布版本）。
