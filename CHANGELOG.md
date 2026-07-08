@@ -2,6 +2,21 @@
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 0.2.9 — 2026-07-08
+
+修方式二（`/plugin install`）装 Bun 时「进度」和「Dashboard 链接」都不显示的问题。
+
+### 根因
+0.2.7 把装 Bun 的进度/提示打到 hook **stdout**（纯文本）。但 Claude Code 的 SessionStart hook 把 stdout 当**单个 JSON 对象**解析（提取 `systemMessage` 显示链接）；纯文本混入让整个 stdout JSON 解析失败 → 链接文本和进度都不显示（浏览器仍会开，因为 hook 的 `openBrowser` 是副作用，不靠 systemMessage 渲染）。
+
+### 修复
+- 进度/提示全部改走 **stderr + 日志文件**（不再污染 stdout）。
+- 装完 Bun 后，把「✅ 已自动安装 Bun」提示与 hook 产出的 Dashboard 链接**合并成一条 `systemMessage`** 发 stdout（单 JSON、可解析）——`systemMessage` 是交互式 claude 一定会显示的字段，确保用户看到「装好了 + 链接」。
+- 安装失败也发 `systemMessage`（不再静默）。
+
+### 验证
+Kali：隐藏 Bun 跑 SessionStart → stdout 为单条可解析 JSON `{"systemMessage":"✅ 已自动安装 Bun…\nShine Dashboard: …"}`，stderr 有 npm 进度；bun 在时走原 inherit 路径不变。
+
 ## 0.2.8 — 2026-07-07
 
 修源码模式（`/plugin install`）首次 SessionStart 不打印 Dashboard 链接、得重启一次才出的问题。
