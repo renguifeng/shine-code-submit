@@ -21,8 +21,8 @@ function ModuleRouter() {
     //   return <EventsModule />;        // 暂时屏蔽
     // case "commits":
     //   return <CommitsModule />;       // 暂时屏蔽
-    case "stats":
-      return <StatsModule />;
+    // case "stats":
+    //   return <StatsModule />;        // 暂时屏蔽
     case "report":
       return <ReportModule />;
     case "system":

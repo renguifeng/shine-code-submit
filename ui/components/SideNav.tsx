@@ -8,7 +8,7 @@ const ITEMS: Array<{ id: ModuleId; label: string; icon: IconName }> = [
   { id: "sessions", label: "会话", icon: "sessions" },
   // { id: "events", label: "事件", icon: "activity" },   // 暂时屏蔽，恢复取消注释即可
   // { id: "commits", label: "提交", icon: "git" },        // 暂时屏蔽，恢复取消注释即可
-  { id: "stats", label: "统计", icon: "chart" },
+  // { id: "stats", label: "统计", icon: "chart" },   // 暂时屏蔽,恢复取消注释即可
   { id: "report", label: "报表", icon: "log" },
   { id: "system", label: "系统", icon: "server" },
 ];
