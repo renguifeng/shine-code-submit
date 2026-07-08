@@ -141,6 +141,7 @@ src/             shared/ daemon/ hook/ cli/ install/（多端共用源码）
 ui/              查看页（React/TSX，由 daemon 内嵌 HTTP 服务）
 dist/            install.cjs（npm 发布产物，gitignored）
 scripts/         build.ts、build-install.ts、publish.sh、fix-tarball-mode.py
+tokenserver/     报表上报接收服务（独立子项目,bun+sqlite+React,可打包 Linux 二进制;见 tokenserver/README.md）
 ```
 
 ## 环境变量
@@ -161,6 +162,7 @@ daemon.pid        pid/port/token/startedAt
 spool/*.json      待消费事件（每事件一文件，原子写）
 log/daemon.log    日志（按大小轮转）
 db/events.sqlite  事件库（按 cwd 隔离，幂等去重）
+settings.json     上报配置（reportUrl/reportIntervalMin;默认 http://47.98.221.20:36667/api/report,10 分钟）
 ```
 
 ## 关键设计点
