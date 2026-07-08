@@ -42,6 +42,16 @@ export async function getGitUser(cwd: string): Promise<string | null> {
   }
 }
 
+/** 取 cwd 的 git remote origin URL；非 git 仓库 / 无 origin / git 不可用返回 null。 */
+export async function getGitRemote(cwd: string): Promise<string | null> {
+  try {
+    const url = (await runGit(cwd, ["remote", "get-url", "origin"])).trim();
+    return url || null;
+  } catch {
+    return null;
+  }
+}
+
 /** 跑 git 子进程，超时或非 0 退出 reject；stdout 文本 resolve。 */
 function runGit(cwd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {

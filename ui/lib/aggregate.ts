@@ -1,5 +1,6 @@
 // 纯聚合函数（统计模块用）：按项目/按天分组，无副作用。
 import type { SessionSummary, TokenUsage } from "../types";
+import { realInput } from "./util";
 
 export interface ProjTokenRow {
   cwd: string;
@@ -28,7 +29,7 @@ export function aggregateTokenByProject(sessions: SessionSummary[]): ProjTokenRo
     m.set(s.cwd, r);
   }
   return [...m.values()].sort(
-    (a, b) => b.token.input + b.token.output - (a.token.input + a.token.output),
+    (a, b) => realInput(b.token) + b.token.output - (realInput(a.token) + a.token.output),
   );
 }
 

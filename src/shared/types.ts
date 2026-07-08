@@ -124,24 +124,15 @@ export interface ReportSession {
   tokenTotal: TokenUsage | null;
 }
 
-/** 报告里单项目的提交汇总(窗口内)。 */
-export interface ReportProjectCommits {
-  count: number;
-  added: number;
-  deleted: number;
-  lastTime: number | null; // 最近提交时间(ms),无提交 null
-}
-
 /** 报告里单个项目(=cwd)的聚合行。 */
 export interface ReportProject {
   cwd: string;
   name: string; // shortDir(cwd),展示用
   gitUser: string | null; // git config user.name
+  gitRemote: string | null; // git remote origin URL
   sessionCount: number;
   sessions: ReportSession[]; // 每会话 token 明细
   totalTokens: TokenUsage; // 该项目 token 合计
-  commits: ReportProjectCommits;
-  recentCommits: CommitLog[]; // 最近若干条(展示用,限 5)
   gitError?: string;
 }
 
@@ -150,9 +141,6 @@ export interface ReportTotals {
   projects: number;
   sessions: number;
   tokens: TokenUsage;
-  commitCount: number;
-  added: number;
-  deleted: number;
 }
 
 /** GET /api/report 响应。 */

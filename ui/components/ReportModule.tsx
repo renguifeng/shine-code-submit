@@ -7,7 +7,7 @@ import { useApp } from "../state/AppContext";
 import { Icon } from "./Icon";
 import { Splitter } from "./Splitter";
 import type { ReportProject, ReportResponse } from "../types";
-import { fmtDateTime, fmtTokens, fmtUsageFull, shortDir } from "../lib/util";
+import { fmtDateTime, fmtTokens, fmtUsageFull, realInput, shortDir } from "../lib/util";
 
 const PAGE = 20; // 每页 session 数
 
@@ -17,6 +17,8 @@ export function ReportModule() {
   const [data, setData] = useState<ReportResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selCwd, setSelCwd] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,24 +50,42 @@ export function ReportModule() {
             <b>报表</b>
             <span title="软件版本">v{data.version}</span>
             <span title="git 用户">👤 {data.gitUser ?? "—"}</span>
-            <span>{data.totals.projects} 项目</span>
-            <span>{data.totals.sessions} 会话</span>
-            <span title={fmtUsageFull(data.totals.tokens)}>
-              token {fmtTokens(data.totals.tokens.input + data.totals.tokens.output)}
-            </span>
             <span>
-              {data.totals.commitCount} 提交 · +{fmtTokens(data.totals.added)}/-{fmtTokens(data.totals.deleted)}
+              {data.totals.projects} 项目 · {data.totals.sessions} 会话
             </span>
-            {/* 占位:后期接「上报到服务器」(POST 本报告到远端)。现在禁用。 */}
             <button
               type="button"
               className="tab"
-              disabled
-              title="后期接入:把本报告上报到服务器(占位)"
+              disabled={uploading}
+              title="手动上报报表到服务器(需先在「设置」配置上报地址)"
               style={{ marginLeft: "auto" }}
+              onClick={async () => {
+                setUploading(true);
+                setUploadResult(null);
+                try {
+                  const r = await fetch(`${location.origin}/api/report/upload`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (r.ok) {
+                    setUploadResult({ ok: true, text: "上报成功" });
+                  } else {
+                    const j = await r.json().catch(() => ({}));
+                    setUploadResult({ ok: false, text: j.error ?? `HTTP ${r.status}` });
+                  }
+                } catch (e) {
+                  setUploadResult({ ok: false, text: e instanceof Error ? e.message : String(e) });
+                } finally {
+                  setUploading(false);
+                  setTimeout(() => setUploadResult(null), 3000);
+                }
+              }}
             >
-              ☁ 上报(敬请期待)
+              ☁ {uploading ? "上报中…" : "上报"}
             </button>
+            {uploadResult && (
+              <span className={uploadResult.ok ? "field-ok" : "field-err"}>{uploadResult.text}</span>
+            )}
           </>
         ) : (
           <span>{err ? `加载失败:${err}` : "加载中…"}</span>
@@ -116,12 +136,12 @@ export function ReportModule() {
   );
 }
 
-/** 右侧详情:标题(输入/输出 token 汇总 + 提交汇总) + session 表格(分页,隐藏 0 token)。
+/** 右侧详情:标题(仓库地址 + 用户 + token 汇总) + session 表格(分页,隐藏 0 token)。
  *  key=sel.cwd:换项目时重挂载,分页回到第 1 页。 */
 function ProjectDetail({ p }: { p: ReportProject }) {
   const [page, setPage] = useState(1);
-  // 过滤掉 0 token 的 session(tokenTotal 为 null 或 input+output=0)
-  const rows = p.sessions.filter((s) => s.tokenTotal && s.tokenTotal.input + s.tokenTotal.output > 0);
+  // 过滤掉 0 token 的 session(tokenTotal 为 null 或 真实输入+输出=0)
+  const rows = p.sessions.filter((s) => s.tokenTotal && realInput(s.tokenTotal) + s.tokenTotal.output > 0);
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE));
   const cur = Math.min(page, pageCount);
   const pageRows = rows.slice((cur - 1) * PAGE, cur * PAGE);
@@ -129,15 +149,16 @@ function ProjectDetail({ p }: { p: ReportProject }) {
   return (
     <>
       <div className="report-title">
-        <span className="rt-sum" title={fmtUsageFull(p.totalTokens)}>
-          输入 token <b>{fmtTokens(p.totalTokens.input)}</b>
+        {p.gitRemote && (
+          <span className="rt-sum" title={p.gitRemote}>
+            🔗 {p.gitRemote.length > 50 ? p.gitRemote.slice(0, 50) + "…" : p.gitRemote}
+          </span>
+        )}
+        <span className="rt-sum">
+          👤 {p.gitUser ?? "—"}
         </span>
-        <span className="rt-sum" title={fmtUsageFull(p.totalTokens)}>
-          输出 token <b>{fmtTokens(p.totalTokens.output)}</b>
-        </span>
-        <span className="rt-sum" style={{ marginLeft: "auto" }}>
-          {p.commits.count} 提交 · +{fmtTokens(p.commits.added)}/-{fmtTokens(p.commits.deleted)}
-          {p.commits.lastTime ? ` · 最近 ${fmtDateTime(p.commits.lastTime)}` : ""}
+        <span className="rt-sum" title={fmtUsageFull(p.totalTokens)} style={{ marginLeft: "auto" }}>
+          token {fmtTokens(realInput(p.totalTokens) + p.totalTokens.output)}
         </span>
       </div>
 
@@ -160,7 +181,7 @@ function ProjectDetail({ p }: { p: ReportProject }) {
                   {s.sessionId.slice(0, 8)}
                 </td>
                 <td>{fmtDateTime(s.lastActive)}</td>
-                <td className="rt-num">{fmtTokens(s.tokenTotal!.input)}</td>
+                <td className="rt-num">{fmtTokens(realInput(s.tokenTotal!))}</td>
                 <td className="rt-num">{fmtTokens(s.tokenTotal!.output)}</td>
               </tr>
             ))}

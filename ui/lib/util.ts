@@ -41,27 +41,36 @@ export function safeJson(v: unknown): string {
   }
 }
 
-/** 紧凑数字：1234 → "1.2k"，1234567 → "1.2M"，<1000 原样。 */
+/** 紧凑数字：1234 → "1.2k"，1234567 → "1.2M"，1.03e9 → "1B"，<1000 原样。 */
 export function fmtTokens(n: number): string {
   if (!Number.isFinite(n) || n < 1000) return String(n);
-  if (n < 1_000_000) return trimZero((n / 1000).toFixed(1)) + "k";
-  return trimZero((n / 1_000_000).toFixed(1)) + "M";
+  if (n < 1_000_000) return trimZero((n / 1_000).toFixed(1)) + "k";
+  if (n < 1_000_000_000) return trimZero((n / 1_000_000).toFixed(1)) + "M";
+  if (n < 1_000_000_000_000) return trimZero((n / 1_000_000_000).toFixed(2)) + "B";
+  return trimZero((n / 1_000_000_000_000).toFixed(2)) + "T";
 }
 
-/** token 用量简写：↑输入 ↓输出（cache 明细放 title）。无值返回空串。 */
-export function fmtUsage(u?: Pick<TokenUsage, "input" | "output"> | null): string {
+/** 真实输入 token = 未缓存输入 + 缓存写 + 缓存读（每次 API 请求的完整 prompt 上下文）。
+ *  直接累加 Anthropic API 返回的原始字段，不乘任何系数。 */
+export function realInput(u?: TokenUsage | null): number {
+  if (!u) return 0;
+  return u.input + u.cacheCreation + u.cacheRead;
+}
+
+/** token 用量简写：↑真实输入 ↓输出（真实输入 = 未缓存 + 缓存写 + 缓存读）。无值返回空串。 */
+export function fmtUsage(u?: TokenUsage | null): string {
   if (!u) return "";
-  return `↑${fmtTokens(u.input)} ↓${fmtTokens(u.output)}`;
+  return `↑${fmtTokens(realInput(u))} ↓${fmtTokens(u.output)}`;
 }
 
-/** 完整 token 用量（input/output/cacheCreation/cacheRead），用于 title 提示。 */
+/** 完整 token 用量，用于 title 提示：真实输入合计 + 输出 + 四字段明细（均原始值，不加权）。 */
 export function fmtUsageFull(u?: TokenUsage | null): string {
   if (!u) return "";
-  return `输入 ${u.input} · 输出 ${u.output} · 缓存写 ${u.cacheCreation} · 缓存读 ${u.cacheRead}`;
+  return `真实输入 ${realInput(u)} · 输出 ${u.output} · (未缓存 ${u.input} · 缓存写 ${u.cacheCreation} · 缓存读 ${u.cacheRead})`;
 }
 
 function trimZero(s: string): string {
-  return s.replace(/\.0$/, "");
+  return s.replace(/\.?0+$/, "");
 }
 
 /** 累加 assistant 消息的 usage（对话视图会话级汇总）。 */

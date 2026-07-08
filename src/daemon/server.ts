@@ -7,7 +7,6 @@ import type {
   HookEventType,
   PidFile,
   ReportProject,
-  ReportProjectCommits,
   ReportResponse,
   ReportSession,
   ReportTotals,
@@ -18,7 +17,7 @@ import { deriveStableEventId } from "../shared/id";
 import { checkToken } from "./auth";
 import { parseTranscript, sumUsage } from "./transcript";
 import { getSessionTokenTotal } from "./token-cache";
-import { getCommits, getGitUser } from "./git";
+import { getCommits, getGitUser, getGitRemote } from "./git";
 import { readSettings, writeSettings } from "./settings";
 import type { Store } from "./store";
 import type { EventBus } from "./bus";
@@ -199,6 +198,17 @@ export function startServer(deps: ServerDeps) {
         return json(await buildReport(store, since));
       }
 
+      // 手动上报:构建报表并 POST 到 settings.reportUrl(与定时器同一逻辑)。
+      if (path === "/api/report/upload" && req.method === "POST") {
+        try {
+          await uploadReport(store);
+          return json({ status: "ok" });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return json({ error: msg }, 500);
+        }
+      }
+
       // 用户设置:GET 读、PUT 写(字段级合并)。目前只有 reportUrl(上报地址)。
       if (path === "/api/settings" && req.method === "GET") {
         return json(readSettings());
@@ -255,7 +265,7 @@ function findTranscriptPath(store: Store, sessionId: string): string | null {
   return null;
 }
 
-/** 构建 /api/report：按项目(cwd)聚合会话/token/提交 + git 用户 + 版本。窗口 since(ms，0=全部)。 */
+/** 构建 /api/report：按项目(cwd)聚合会话/token + git 用户 + 仓库地址 + 版本。窗口 since(ms，0=全部)。 */
 async function buildReport(store: Store, since: number): Promise<ReportResponse> {
   const sessions = store.sessions().filter((s) => s.lastActive >= since);
   const byCwd = new Map<string, SessionSummary[]>();
@@ -269,7 +279,6 @@ async function buildReport(store: Store, since: number): Promise<ReportResponse>
     [...byCwd.keys()].map(
       async (cwd): Promise<ReportProject> => {
         const ss = byCwd.get(cwd) ?? [];
-        // 每会话 token：从 transcript 汇总（带 mtime 缓存）。读不到为 null。
         const rs: ReportSession[] = ss.map((s) => {
           const tp = findTranscriptPath(store, s.sessionId);
           return {
@@ -280,26 +289,16 @@ async function buildReport(store: Store, since: number): Promise<ReportResponse>
         });
         const totalTokens = sumTokens(rs.map((r) => r.tokenTotal));
 
-        // 每项目跑 git log + git config（并行）；容错，失败留空/带 error
-        const [gitUser, commitsResp] = await Promise.all([getGitUser(cwd), getCommits(cwd, 200)]);
-        const inRange = (commitsResp.commits ?? []).filter((c) => c.time >= since);
-        const commits: ReportProjectCommits = {
-          count: inRange.length,
-          added: inRange.reduce((a, c) => a + c.added, 0),
-          deleted: inRange.reduce((a, c) => a + c.deleted, 0),
-          lastTime: inRange.length ? Math.max(...inRange.map((c) => c.time)) : null,
-        };
+        const [gitUser, gitRemote] = await Promise.all([getGitUser(cwd), getGitRemote(cwd)]);
 
         return {
           cwd,
           name: shortName(cwd),
           gitUser,
+          gitRemote,
           sessionCount: ss.length,
           sessions: rs,
           totalTokens,
-          commits,
-          recentCommits: inRange.slice(0, 5),
-          ...(commitsResp.error ? { gitError: commitsResp.error } : {}),
         };
       },
     ),
@@ -315,9 +314,6 @@ async function buildReport(store: Store, since: number): Promise<ReportResponse>
     projects: projects.length,
     sessions: sessions.length,
     tokens: sumTokens(projects.map((p) => p.totalTokens)),
-    commitCount: projects.reduce((a, p) => a + p.commits.count, 0),
-    added: projects.reduce((a, p) => a + p.commits.added, 0),
-    deleted: projects.reduce((a, p) => a + p.commits.deleted, 0),
   };
 
   return {

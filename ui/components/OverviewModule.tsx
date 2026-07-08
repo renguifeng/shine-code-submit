@@ -3,7 +3,7 @@ import { useApi } from "../hooks/useApi";
 import { useEvents } from "../hooks/useEvents";
 import { useAllCommits } from "../hooks/useAllCommits";
 import { useApp } from "../state/AppContext";
-import { fmtDateTime, fmtTokens, shortDir, sumTokenUsage } from "../lib/util";
+import { fmtDateTime, fmtTokens, realInput, shortDir, sumTokenUsage } from "../lib/util";
 
 interface TimelineItem {
   ts: number;
@@ -41,7 +41,7 @@ export function OverviewModule() {
       <div className="kpi-grid">
         <div className="kpi-card">
           <span className="kpi-label">Token 输入</span>
-          <b className="kpi-value">{fmtTokens(tokenSum.total.input)}</b>
+          <b className="kpi-value">{fmtTokens(realInput(tokenSum.total))}</b>
         </div>
         <div className="kpi-card">
           <span className="kpi-label">Token 输出</span>
