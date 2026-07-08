@@ -49,6 +49,30 @@ export function startServer(deps: ServerDeps) {
       headers: { "content-type": "application/json; charset=utf-8" },
     });
 
+  // 自动上报:每分钟 tick;配置了 reportUrl + reportIntervalMin(>0) 且到点,则上报一次。
+  // 配置实时读 settings,改 URL/间隔不用重启即生效。
+  let lastReportAt = Date.now();
+  setInterval(async () => {
+    let url: string | null;
+    let intervalMin: number;
+    try {
+      const s = readSettings();
+      url = s.reportUrl ?? null;
+      intervalMin = typeof s.reportIntervalMin === "number" ? s.reportIntervalMin : 0;
+    } catch {
+      return;
+    }
+    if (!url || !intervalMin || intervalMin <= 0) return;
+    if (Date.now() - lastReportAt < intervalMin * 60_000) return;
+    lastReportAt = Date.now();
+    try {
+      await uploadReport(store);
+      log.info(`auto report uploaded to ${url}`);
+    } catch (e) {
+      log.info(`auto report upload failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, 60_000);
+
   return Bun.serve({
     hostname: LISTEN_HOST,
     port: PORT,
@@ -189,6 +213,11 @@ export function startServer(deps: ServerDeps) {
         const cur = readSettings();
         const b = (body ?? {}) as Record<string, unknown>;
         if (typeof b.reportUrl === "string") cur.reportUrl = b.reportUrl.trim() || null;
+        if (typeof b.reportIntervalMin === "number") {
+          cur.reportIntervalMin = Number.isFinite(b.reportIntervalMin) && b.reportIntervalMin > 0
+            ? Math.floor(b.reportIntervalMin)
+            : null;
+        }
         writeSettings(cur);
         return json(cur);
       }
@@ -321,6 +350,20 @@ function shortName(p: string): string {
   const t = p.replace(/[\\/]+$/, "");
   const i = Math.max(t.lastIndexOf("/"), t.lastIndexOf("\\"));
   return i >= 0 ? t.slice(i + 1) : t;
+}
+
+/** 构建 report 并 POST 到 settings.reportUrl(自动上报用)。URL 未配置则不报;失败抛错由调用方记日志。 */
+async function uploadReport(store: Store): Promise<void> {
+  const s = readSettings();
+  const url = s.reportUrl;
+  if (!url) return;
+  const body = JSON.stringify(await buildReport(store, 0));
+  await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body,
+    signal: AbortSignal.timeout(15000),
+  });
 }
 
 function normalizeEvent(type: HookEventType, body: unknown): HookEvent | null {

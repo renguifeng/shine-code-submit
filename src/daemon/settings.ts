@@ -8,6 +8,7 @@ const SETTINGS_FILE = join(DATA_DIR, "settings.json");
 
 export interface Settings {
   reportUrl?: string | null; // 上报到服务器的地址(空/缺省=未配置)
+  reportIntervalMin?: number | null; // 自动上报间隔(分钟);>0 启用,空/0=不自动上报
 }
 
 /** 读设置;文件不存在/损坏返回空对象(全默认)。 */
