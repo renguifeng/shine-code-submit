@@ -1,8 +1,10 @@
-// 「数据上报」模块:跨项目聚合(版本/git 用户/会话数+每会话 token/提交次数+行数+时间)。
-// 数据来自 GET /api/report?since=0(全部)。后期要真·上报服务器时,把底部占位按钮接上即可。
+// 「数据上报」模块:顶部汇总标题 + 左侧项目导航 + 右侧选中项目的会话详情(时间/token)。
+// 数据来自 GET /api/report?since=0(全部)。后期真·上报服务器时,把顶部占位按钮接上即可。
 import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { useApp } from "../state/AppContext";
+import { Icon } from "./Icon";
+import { Splitter } from "./Splitter";
 import type { ReportProject, ReportResponse } from "../types";
 import { fmtDateTime, fmtTokens, fmtUsage, fmtUsageFull, shortDir } from "../lib/util";
 
@@ -11,12 +13,11 @@ export function ReportModule() {
   const api = useApi(token);
   const [data, setData] = useState<ReportResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [openCwd, setOpenCwd] = useState<string | null>(null);
+  const [selCwd, setSelCwd] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setErr(null);
-    setData(null);
     api<ReportResponse>(`/api/report?since=0`)
       .then((d) => !cancelled && setData(d))
       .catch((e) => !cancelled && setErr(String(e)));
@@ -25,151 +26,174 @@ export function ReportModule() {
     };
   }, [api]);
 
+  // 默认选中第一个项目
+  useEffect(() => {
+    if (data && !selCwd && data.projects[0]) setSelCwd(data.projects[0].cwd);
+  }, [data, selCwd]);
+
+  const sel = data?.projects.find((p) => p.cwd === selCwd) ?? null;
+
   return (
     <div className="stats-view">
-      <div className="toolbar">
-        {/* 占位:后期接「上报到服务器」(POST 本报告到远端)。现在禁用,提示敬请期待。 */}
-        <button type="button" className="tab" disabled title="后期接入:把本报告上报到服务器(占位)">
-          ☁ 上报到服务器(敬请期待)
-        </button>
+      {/* 顶部汇总标题 */}
+      <div
+        className="panel-header"
+        style={{ display: "flex", gap: "1.1rem", alignItems: "baseline", flexWrap: "wrap" }}
+      >
+        {data ? (
+          <>
+            <b>数据上报</b>
+            <span title="软件版本">v{data.version}</span>
+            <span title="git 用户">👤 {data.gitUser ?? "—"}</span>
+            <span>{data.totals.projects} 项目</span>
+            <span>{data.totals.sessions} 会话</span>
+            <span title={fmtUsageFull(data.totals.tokens)}>token {fmtUsage(data.totals.tokens) || "—"}</span>
+            <span>
+              {data.totals.commitCount} 提交 · +{fmtTokens(data.totals.added)}/-{fmtTokens(data.totals.deleted)}
+            </span>
+            {/* 占位:后期接「上报到服务器」(POST 本报告到远端)。现在禁用。 */}
+            <button
+              type="button"
+              className="tab"
+              disabled
+              title="后期接入:把本报告上报到服务器(占位)"
+              style={{ marginLeft: "auto" }}
+            >
+              ☁ 上报(敬请期待)
+            </button>
+          </>
+        ) : (
+          <span>{err ? `加载失败:${err}` : "加载中…"}</span>
+        )}
       </div>
 
-      <div className="stats-body">
-        {err && <div className="sum-empty">加载失败:{err}</div>}
-        {!err && !data && <div className="sum-empty">加载中…</div>}
-        {data && (
-          <>
-            <section className="sum-section">
-              <div className="sum-head">
-                <h3>汇总</h3>
-              </div>
-              <div className="bar-list">
-                <div className="bar-row">
-                  <span className="bar-label">软件版本</span>
-                  <span className="bar-val">{data.version}</span>
-                </div>
-                <div className="bar-row">
-                  <span className="bar-label">git 用户</span>
-                  <span className="bar-val">{data.gitUser ?? "—"}</span>
-                </div>
-                <div className="bar-row">
-                  <span className="bar-label">项目数</span>
-                  <span className="bar-val">{data.totals.projects}</span>
-                </div>
-                <div className="bar-row">
-                  <span className="bar-label">会话总数</span>
-                  <span className="bar-val">{data.totals.sessions}</span>
-                </div>
-                <div className="bar-row">
-                  <span className="bar-label">token 总量</span>
-                  <span className="bar-val" title={fmtUsageFull(data.totals.tokens)}>
-                    {fmtUsage(data.totals.tokens) || "—"}
-                  </span>
-                </div>
-                <div className="bar-row">
-                  <span className="bar-label">提交总数</span>
-                  <span className="bar-val">
-                    {data.totals.commitCount} · +{fmtTokens(data.totals.added)}/-{fmtTokens(data.totals.deleted)}
-                  </span>
-                </div>
-              </div>
-            </section>
+      {/* 项目导航 | 详情 */}
+      <div className="sessions-with-tree">
+        <aside className="sessions-tree-panel panel">
+          <div className="panel-header">
+            <h2>项目 · {data?.projects.length ?? 0}</h2>
+          </div>
+          {!data || data.projects.length === 0 ? (
+            <ul className="session-tree">
+              <li className="empty-state">
+                <span className="es-hint">暂无项目</span>
+                <span className="es-sub">启动 Claude Code 后会出现</span>
+              </li>
+            </ul>
+          ) : (
+            <ul className="session-tree">
+              {data.projects.map((p) => (
+                <li
+                  key={p.cwd}
+                  className={p.cwd === selCwd ? "active" : undefined}
+                  title={p.cwd}
+                  onClick={() => setSelCwd(p.cwd)}
+                >
+                  <div className="sess-row">
+                    <span className="group-cwd">{shortDir(p.cwd) || p.cwd}</span>
+                    <span className="sess-tokens" title={fmtUsageFull(p.totalTokens)}>
+                      {fmtUsage(p.totalTokens) || "—"}
+                    </span>
+                  </div>
+                  <div className="sess-sub">
+                    {p.sessionCount} 会话 · {p.commits.count} 提交
+                    {p.gitUser ? ` · @${p.gitUser}` : ""}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
 
-            {data.projects.length === 0 && <div className="sum-empty">暂无项目数据</div>}
-            {data.projects.map((p) => (
-              <ReportCard
-                key={p.cwd}
-                p={p}
-                open={openCwd === p.cwd}
-                onToggle={() => setOpenCwd(openCwd === p.cwd ? null : p.cwd)}
-              />
-            ))}
-          </>
-        )}
+        <Splitter orient="v" varName="--tree-w" />
+
+        <div className="sessions-main">
+          {sel ? (
+            <ProjectDetail p={sel} />
+          ) : (
+            <div className="empty-state">
+              <Icon name="log" size={30} />
+              <span className="es-hint">选左侧项目查看详情</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function ReportCard({ p, open, onToggle }: { p: ReportProject; open: boolean; onToggle: () => void }) {
+/** 右侧详情:项目头部(提交汇总) + 会话明细(时间/token) + 最近提交。 */
+function ProjectDetail({ p }: { p: ReportProject }) {
   return (
-    <section className="sum-section">
-      <div className="sum-head">
-        <h3 title={p.cwd}>{shortDir(p.cwd) || p.cwd}</h3>
-        <span style={{ marginLeft: "auto", opacity: 0.65, fontSize: "var(--fs-xs)" }}>
-          {p.gitUser ? `@${p.gitUser}` : "@—"}
-          {p.gitError ? " · git 不可用" : ""}
+    <>
+      <div
+        className="panel-header"
+        style={{ display: "flex", gap: "1rem", alignItems: "baseline", flexWrap: "wrap" }}
+      >
+        <h2 title={p.cwd}>{shortDir(p.cwd) || p.cwd}</h2>
+        <span style={{ opacity: 0.7 }}>{p.gitUser ? `@${p.gitUser}` : "@—"}</span>
+        <span style={{ marginLeft: "auto", opacity: 0.7 }}>
+          {p.commits.count} 提交 · +{fmtTokens(p.commits.added)}/-{fmtTokens(p.commits.deleted)}
+          {p.commits.lastTime ? ` · 最近 ${fmtDateTime(p.commits.lastTime)}` : ""}
         </span>
-        <button type="button" className="tab" onClick={onToggle} style={{ marginLeft: "0.5rem" }}>
-          {open ? "收起" : "展开"}
-        </button>
-      </div>
-      <div className="bar-list">
-        <div className="bar-row">
-          <span className="bar-label">会话</span>
-          <span className="bar-val">{p.sessionCount}</span>
-        </div>
-        <div className="bar-row">
-          <span className="bar-label">token</span>
-          <span className="bar-val" title={fmtUsageFull(p.totalTokens)}>
-            {fmtUsage(p.totalTokens) || "—"}
-          </span>
-        </div>
-        <div className="bar-row">
-          <span className="bar-label">提交</span>
-          <span className="bar-val">
-            {p.commits.count} · +{fmtTokens(p.commits.added)}/-{fmtTokens(p.commits.deleted)}
-          </span>
-        </div>
-        <div className="bar-row">
-          <span className="bar-label">最近提交</span>
-          <span className="bar-val">{p.commits.lastTime ? fmtDateTime(p.commits.lastTime) : "—"}</span>
-        </div>
       </div>
 
-      {open && (
-        <>
-          <div className="sum-head" style={{ marginTop: "0.8rem" }}>
-            <h3>会话 token 明细 · {p.sessions.length}</h3>
+      <div style={{ overflow: "auto", padding: "0.5rem 0.8rem" }}>
+        <div className="bar-list">
+          <div className="bar-row">
+            <span className="bar-label">会话数</span>
+            <span className="bar-val">{p.sessionCount}</span>
           </div>
-          {p.sessions.length === 0 ? (
-            <div className="sum-empty">无会话</div>
-          ) : (
-            <div className="bar-list">
-              {p.sessions.map((s) => (
-                <div className="bar-row" key={s.sessionId}>
-                  <span className="bar-label" title={s.sessionId}>
-                    {s.sessionId.slice(0, 8)} · {fmtDateTime(s.lastActive)}
-                  </span>
-                  <span className="bar-val" title={fmtUsageFull(s.tokenTotal)}>
-                    {fmtUsage(s.tokenTotal) || "—"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="bar-row">
+            <span className="bar-label">token</span>
+            <span className="bar-val" title={fmtUsageFull(p.totalTokens)}>
+              {fmtUsage(p.totalTokens) || "—"}
+            </span>
+          </div>
+        </div>
 
-          <div className="sum-head" style={{ marginTop: "0.8rem" }}>
-            <h3>最近提交 · {p.recentCommits.length}</h3>
+        <div className="sum-head" style={{ marginTop: "0.8rem" }}>
+          <h3>会话明细 · 时间 / token · {p.sessions.length}</h3>
+        </div>
+        {p.sessions.length === 0 ? (
+          <div className="sum-empty">无会话</div>
+        ) : (
+          <div className="bar-list">
+            {p.sessions.map((s) => (
+              <div className="sess-row" key={s.sessionId}>
+                <span className="sess-time">{fmtDateTime(s.lastActive)}</span>
+                <span className="sess-sid" title={s.sessionId}>
+                  {s.sessionId.slice(0, 8)}
+                </span>
+                <span className="sess-tokens" title={fmtUsageFull(s.tokenTotal)}>
+                  {fmtUsage(s.tokenTotal) || "—"}
+                </span>
+              </div>
+            ))}
           </div>
-          {p.recentCommits.length === 0 ? (
-            <div className="sum-empty">无提交</div>
-          ) : (
-            <div className="bar-list">
-              {p.recentCommits.map((c) => (
-                <div className="bar-row" key={c.hash}>
-                  <span className="bar-label" title={c.subject}>
-                    {(c.subject || c.hash).slice(0, 40)}
-                  </span>
-                  <span className="bar-val">
-                    {fmtDateTime(c.time)} · +{c.added}/-{c.deleted}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </section>
+        )}
+
+        <div className="sum-head" style={{ marginTop: "0.8rem" }}>
+          <h3>最近提交 · {p.recentCommits.length}</h3>
+        </div>
+        {p.recentCommits.length === 0 ? (
+          <div className="sum-empty">无提交</div>
+        ) : (
+          <div className="bar-list">
+            {p.recentCommits.map((c) => (
+              <div className="sess-row" key={c.hash}>
+                <span className="sess-time">{fmtDateTime(c.time)}</span>
+                <span className="sess-sid" title={c.subject}>
+                  {(c.subject || c.hash).slice(0, 26)}
+                </span>
+                <span className="sess-tokens">
+                  +{c.added}/-{c.deleted}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
