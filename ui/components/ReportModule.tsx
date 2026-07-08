@@ -1,5 +1,5 @@
-// 「数据上报」模块:顶部汇总标题 + 左侧项目导航(仅项目名) + 右侧 session 表格。
-// 表格列:Session / 时间 / 输入 token / 输出 token;表格标题显示该项目的输入/输出 token 汇总。
+// 「数据上报」模块:顶部汇总标题 + 左侧项目导航(仅项目名) + 右侧 session 表格(分页,隐藏 0 token)。
+// 表格列:Session / 时间 / 输入 token / 输出 token;标题显示该项目的输入/输出 token 汇总。
 // 数据来自 GET /api/report?since=0(全部)。后期真·上报服务器时,把顶部占位按钮接上即可。
 import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
@@ -8,6 +8,8 @@ import { Icon } from "./Icon";
 import { Splitter } from "./Splitter";
 import type { ReportProject, ReportResponse } from "../types";
 import { fmtDateTime, fmtTokens, fmtUsageFull, shortDir } from "../lib/util";
+
+const PAGE = 20; // 每页 session 数
 
 export function ReportModule() {
   const { token } = useApp();
@@ -48,7 +50,9 @@ export function ReportModule() {
             <span title="git 用户">👤 {data.gitUser ?? "—"}</span>
             <span>{data.totals.projects} 项目</span>
             <span>{data.totals.sessions} 会话</span>
-            <span title={fmtUsageFull(data.totals.tokens)}>token {fmtTokens(data.totals.tokens.input + data.totals.tokens.output)}</span>
+            <span title={fmtUsageFull(data.totals.tokens)}>
+              token {fmtTokens(data.totals.tokens.input + data.totals.tokens.output)}
+            </span>
             <span>
               {data.totals.commitCount} 提交 · +{fmtTokens(data.totals.added)}/-{fmtTokens(data.totals.deleted)}
             </span>
@@ -75,14 +79,12 @@ export function ReportModule() {
             <h2>项目 · {data?.projects.length ?? 0}</h2>
           </div>
           {!data || data.projects.length === 0 ? (
-            <ul className="session-tree">
-              <li className="empty-state">
-                <span className="es-hint">暂无项目</span>
-                <span className="es-sub">启动 Claude Code 后会出现</span>
-              </li>
-            </ul>
+            <div className="empty-state" style={{ padding: "2rem 1rem" }}>
+              <span className="es-hint">暂无项目</span>
+              <span className="es-sub">启动 Claude Code 后会出现</span>
+            </div>
           ) : (
-            <ul className="session-tree">
+            <ul className="report-nav">
               {data.projects.map((p) => (
                 <li
                   key={p.cwd}
@@ -90,7 +92,7 @@ export function ReportModule() {
                   title={p.cwd}
                   onClick={() => setSelCwd(p.cwd)}
                 >
-                  <span className="group-cwd">{shortDir(p.cwd) || p.cwd}</span>
+                  {shortDir(p.cwd) || p.cwd}
                 </li>
               ))}
             </ul>
@@ -101,7 +103,7 @@ export function ReportModule() {
 
         <div className="sessions-main">
           {sel ? (
-            <ProjectDetail p={sel} />
+            <ProjectDetail key={sel.cwd} p={sel} />
           ) : (
             <div className="empty-state">
               <Icon name="log" size={30} />
@@ -114,8 +116,16 @@ export function ReportModule() {
   );
 }
 
-/** 右侧详情:标题(项目输入/输出 token 汇总 + 提交汇总) + session 表格(时间/输入/输出)。 */
+/** 右侧详情:标题(输入/输出 token 汇总 + 提交汇总) + session 表格(分页,隐藏 0 token)。
+ *  key=sel.cwd:换项目时重挂载,分页回到第 1 页。 */
 function ProjectDetail({ p }: { p: ReportProject }) {
+  const [page, setPage] = useState(1);
+  // 过滤掉 0 token 的 session(tokenTotal 为 null 或 input+output=0)
+  const rows = p.sessions.filter((s) => s.tokenTotal && s.tokenTotal.input + s.tokenTotal.output > 0);
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE));
+  const cur = Math.min(page, pageCount);
+  const pageRows = rows.slice((cur - 1) * PAGE, cur * PAGE);
+
   return (
     <>
       <div className="report-title">
@@ -143,19 +153,32 @@ function ProjectDetail({ p }: { p: ReportProject }) {
             </tr>
           </thead>
           <tbody>
-            {p.sessions.map((s) => (
+            {pageRows.map((s) => (
               <tr key={s.sessionId}>
                 <td className="rt-sid" title={s.sessionId}>
                   {s.sessionId.slice(0, 8)}
                 </td>
                 <td>{fmtDateTime(s.lastActive)}</td>
-                <td className="rt-num">{s.tokenTotal ? fmtTokens(s.tokenTotal.input) : "—"}</td>
-                <td className="rt-num">{s.tokenTotal ? fmtTokens(s.tokenTotal.output) : "—"}</td>
+                <td className="rt-num">{fmtTokens(s.tokenTotal!.input)}</td>
+                <td className="rt-num">{fmtTokens(s.tokenTotal!.output)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {p.sessions.length === 0 && <div className="sum-empty">无会话</div>}
+        {rows.length === 0 && <div className="sum-empty">无有效会话(均已隐藏 0 token)</div>}
+      </div>
+
+      <div className="report-pager">
+        <button type="button" disabled={cur <= 1} onClick={() => setPage(cur - 1)}>
+          ‹ 上一页
+        </button>
+        <span>
+          第 {cur} / {pageCount} 页
+        </span>
+        <button type="button" disabled={cur >= pageCount} onClick={() => setPage(cur + 1)}>
+          下一页 ›
+        </button>
+        <span style={{ marginLeft: "auto" }}>共 {rows.length} 个会话(已隐藏 0 token)</span>
       </div>
     </>
   );
