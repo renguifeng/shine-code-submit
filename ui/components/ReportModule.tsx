@@ -1,28 +1,14 @@
 // 「数据上报」模块:跨项目聚合(版本/git 用户/会话数+每会话 token/提交次数+行数+时间)。
-// 数据来自 GET /api/report?since=<ms>(0=全部)。后期要真·上报服务器时,把底部占位按钮接上即可。
+// 数据来自 GET /api/report?since=0(全部)。后期要真·上报服务器时,把底部占位按钮接上即可。
 import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { useApp } from "../state/AppContext";
 import type { ReportProject, ReportResponse } from "../types";
 import { fmtDateTime, fmtTokens, fmtUsage, fmtUsageFull, shortDir } from "../lib/util";
 
-type Range = "all" | "7d" | "30d";
-
-const RANGES: Array<{ id: Range; label: string; days: number }> = [
-  { id: "all", label: "全部", days: 0 },
-  { id: "7d", label: "近 7 天", days: 7 },
-  { id: "30d", label: "近 30 天", days: 30 },
-];
-
-function rangeSince(r: Range): number {
-  const days = RANGES.find((x) => x.id === r)!.days;
-  return days > 0 ? Date.now() - days * 86400000 : 0;
-}
-
 export function ReportModule() {
   const { token } = useApp();
   const api = useApi(token);
-  const [range, setRange] = useState<Range>("all");
   const [data, setData] = useState<ReportResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [openCwd, setOpenCwd] = useState<string | null>(null);
@@ -31,29 +17,17 @@ export function ReportModule() {
     let cancelled = false;
     setErr(null);
     setData(null);
-    api<ReportResponse>(`/api/report?since=${rangeSince(range)}`)
+    api<ReportResponse>(`/api/report?since=0`)
       .then((d) => !cancelled && setData(d))
       .catch((e) => !cancelled && setErr(String(e)));
     return () => {
       cancelled = true;
     };
-  }, [api, range]);
+  }, [api]);
 
   return (
     <div className="stats-view">
       <div className="toolbar">
-        <div className="tabs">
-          {RANGES.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              className={`tab${range === r.id ? " active" : ""}`}
-              onClick={() => setRange(r.id)}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
         {/* 占位:后期接「上报到服务器」(POST 本报告到远端)。现在禁用,提示敬请期待。 */}
         <button type="button" className="tab" disabled title="后期接入:把本报告上报到服务器(占位)">
           ☁ 上报到服务器(敬请期待)
@@ -101,7 +75,7 @@ export function ReportModule() {
               </div>
             </section>
 
-            {data.projects.length === 0 && <div className="sum-empty">窗口内无项目数据</div>}
+            {data.projects.length === 0 && <div className="sum-empty">暂无项目数据</div>}
             {data.projects.map((p) => (
               <ReportCard
                 key={p.cwd}
