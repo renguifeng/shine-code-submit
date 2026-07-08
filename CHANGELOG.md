@@ -2,12 +2,12 @@
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## 1.0.0 — 2026-07-08
+## 1.0.1 — 2026-07-08
 
-首个正式版。版本号来源统一为 `package.json`，并同步 `.claude-plugin/plugin.json`。
+版本号递增以通过 npm 发布（每次 publish 版本须高于已发布版本）。
 
 ### 改动
-- 版本号 `0.2.11` → `1.0.0`（`package.json` 与 `.claude-plugin/plugin.json`）。
+- 版本号 `1.0.0` → `1.0.1`（`package.json` 与 `.claude-plugin/plugin.json`）。
 - 运行时版本 `SERVICE_VERSION` 继续由 `package.json` 单一来源派生，无需改代码。
 
 ## 0.2.11 — 2026-07-08
