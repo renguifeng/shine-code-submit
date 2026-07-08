@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "bun run src/main.ts",
     "start": "bun run src/main.ts",
-    "build:ui": "bun run scripts/build-ui.ts"
+    "build:ui": "bun run scripts/build-ui.ts",
+    "build": "bun run scripts/build.ts"
   },
   "dependencies": {
     "react": "^19.2.7",

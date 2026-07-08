@@ -11,13 +11,21 @@ export interface Settings {
   reportIntervalMin?: number | null; // 自动上报间隔(分钟);>0 启用,空/0=不自动上报
 }
 
-/** 读设置;文件不存在/损坏返回空对象(全默认)。 */
+/** 默认设置:上报到 tokenserver 公网地址,每 10 分钟一次。 */
+const DEFAULTS: Settings = {
+  reportUrl: "http://47.98.221.20:36667/api/report",
+  reportIntervalMin: 10,
+};
+
+/** 读设置;文件不存在/损坏返回默认值,已存字段覆盖默认(含 null)。 */
 export function readSettings(): Settings {
+  let s: Settings;
   try {
-    return JSON.parse(readFileSync(SETTINGS_FILE, "utf8")) as Settings;
+    s = JSON.parse(readFileSync(SETTINGS_FILE, "utf8")) as Settings;
   } catch {
-    return {};
+    s = {};
   }
+  return { ...DEFAULTS, ...s };
 }
 
 /** 写设置(整体覆盖)。写失败静默——GET 仍返回上次成功写入的值。 */

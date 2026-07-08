@@ -1,11 +1,22 @@
-// 规范化存储:projects + sessions 两表,upsert 去重(行数稳定,不随上报次数增长)。
-// 上报时拆分逐条 upsert;查询走 SQL 组装三级。aggregate 结果内存缓存,写时失效。
+// 规范化存储:projects + sessions 两表,upsert 去重(行数稳定)。
+// DATA_DIR 双模式:开发(bun run src)= tokenserver/data;编译(二进制)= 二进制旁 data/。
+// (Bun 编译后 import.meta.dir 固化为编译机路径,Linux 上不存在,故编译模式用 process.execPath)
 import { Database } from "bun:sqlite";
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { ReportResponse, TokenUsage } from "./types";
 
-const DATA_DIR = join(import.meta.dir, "..", "data");
+function resolveDataDir(): string {
+  if (process.env.TOKENSERVER_DATA_DIR) return process.env.TOKENSERVER_DATA_DIR;
+  // 开发模式:tokenserver/data(import.meta.dir = src,旁有 package.json)
+  if (existsSync(join(import.meta.dir, "..", "package.json"))) {
+    return join(import.meta.dir, "..", "data");
+  }
+  // 编译模式:二进制旁 data/
+  return join(dirname(process.execPath), "data");
+}
+
+const DATA_DIR = resolveDataDir();
 mkdirSync(DATA_DIR, { recursive: true });
 const db = new Database(join(DATA_DIR, "tokens.db"));
 db.exec(`
@@ -89,7 +100,6 @@ interface SessionRow {
   cacheRead: number;
 }
 
-// 预编译 upsert(事务内复用)
 const upsertProject = db.query(`
   INSERT INTO projects (gitUser, cwd, name, gitRemote, lastActive, updatedAt)
   VALUES (?, ?, ?, ?, ?, ?)
@@ -114,11 +124,7 @@ const upsertSession = db.query(`
   WHERE excluded.lastActive >= sessions.lastActive
 `);
 
-/**
- * 存储一次上报:拆分逐条 upsert。
- * - 项目 按 (gitUser, cwd) 去重,最新覆盖 name/gitRemote;lastActive 取 max。
- * - 会话 按 sessionId 去重,仅在 lastActive >= 旧 时覆盖 token(取最新快照)。
- */
+/** 存储一次上报:拆分逐条 upsert。 */
 export function saveReport(raw: ReportResponse): void {
   const gitUser =
     raw.gitUser ?? raw.projects.find((p) => p.gitUser)?.gitUser ?? "未知用户";
@@ -140,12 +146,12 @@ export function saveReport(raw: ReportResponse): void {
     }
   });
   tx();
-  cachedUsers = null; // 失效缓存
+  cachedUsers = null;
 }
 
 let cachedUsers: UserAgg[] | null = null;
 
-/** 查询三级聚合(有内存缓存,saveReport 时失效)。 */
+/** 查询三级聚合(内存缓存,saveReport 时失效)。 */
 export function aggregate(): UserAgg[] {
   if (cachedUsers) return cachedUsers;
 
@@ -158,7 +164,6 @@ export function aggregate(): UserAgg[] {
     )
     .all();
 
-  // 按 (gitUser, cwd) 分组 sessions
   const sessByProj = new Map<string, SessionAgg[]>();
   for (const s of sess) {
     const key = s.gitUser + "\0" + s.cwd;
@@ -180,7 +185,6 @@ export function aggregate(): UserAgg[] {
   }
   for (const arr of sessByProj.values()) arr.sort((a, b) => b.lastActive - a.lastActive);
 
-  // 按 gitUser 分组 projects
   const projByUser = new Map<string, ProjectAgg[]>();
   for (const p of projs) {
     let arr = projByUser.get(p.gitUser);
