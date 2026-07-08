@@ -2,6 +2,14 @@
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 1.0.0 — 2026-07-08
+
+首个正式版。版本号来源统一为 `package.json`，并同步 `.claude-plugin/plugin.json`。
+
+### 改动
+- 版本号 `0.2.11` → `1.0.0`（`package.json` 与 `.claude-plugin/plugin.json`）。
+- 运行时版本 `SERVICE_VERSION` 继续由 `package.json` 单一来源派生，无需改代码。
+
 ## 0.2.11 — 2026-07-08
 
 新增「数据上报」dashboard 页：跨项目聚合（版本 / git 用户 / 每项目会话数+每会话 token / 提交次数+行数+时间）。后期接服务器上报，现留占位按钮。
